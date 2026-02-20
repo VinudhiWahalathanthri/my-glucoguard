@@ -7,7 +7,6 @@ import { TrendingUp, TrendingDown, Minus, Shield, Sparkles, ChevronRight } from 
 const WeeklySummary = () => {
   const { avatarState, dailyScore, streak, completedChallenges, points, level, weeklyData, diabetesRisk } = useUser();
 
-  // Use real weekly data or fallback
   const days = weeklyData.length > 0 ? weeklyData : [
     { day: 'Today', score: dailyScore, mood: avatarState, logged: true },
   ];
@@ -22,8 +21,6 @@ const WeeklySummary = () => {
           <h1 className="text-2xl font-bold text-foreground">Weekly Summary 📅</h1>
           <p className="text-sm text-muted-foreground">Here's how your week went!</p>
         </motion.div>
-
-        {/* Week mood bar */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="rounded-3xl bg-card p-5 shadow-card">
           <h2 className="font-bold text-foreground mb-4">Avatar Mood This Week</h2>
           {days.length === 0 ? (
@@ -59,7 +56,6 @@ const WeeklySummary = () => {
           )}
         </motion.div>
 
-        {/* Stats */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="grid grid-cols-3 gap-3">
           <div className="rounded-2xl bg-card p-4 shadow-card text-center">
             <p className="text-2xl font-bold text-foreground">{streak}</p>
@@ -75,7 +71,6 @@ const WeeklySummary = () => {
           </div>
         </motion.div>
 
-        {/* Risk Awareness */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="rounded-3xl bg-card p-5 shadow-card">
           <div className="flex items-center gap-2 mb-3">
             <Shield className="h-5 w-5 text-primary" />
@@ -97,7 +92,6 @@ const WeeklySummary = () => {
           <p className="text-xs text-muted-foreground mt-2">⚠️ Based on trends, not a medical diagnosis</p>
         </motion.div>
 
-        {/* Future You */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="rounded-3xl bg-card p-5 shadow-card">
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="h-5 w-5 text-accent" />
@@ -120,8 +114,6 @@ const WeeklySummary = () => {
               : "Small improvements now = huge results later. You got this! 💪"}
           </p>
         </motion.div>
-
-        {/* Suggestions */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="rounded-3xl gradient-primary p-5 text-primary-foreground">
           <h2 className="font-bold text-lg mb-2">💡 Next Week Tips</h2>
           <ul className="space-y-2 text-sm">

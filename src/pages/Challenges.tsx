@@ -32,7 +32,6 @@ const Challenges = () => {
   const { completedChallenges, completeChallenge, badges, points, level, habits } = useUser();
   const [tab, setTab] = useState<'challenges' | 'badges'>('challenges');
 
-  // Auto-check challenges against current habits
   const canComplete = (c: typeof challenges[0]) => {
     return c.check(habits) && !completedChallenges.includes(c.id);
   };
