@@ -3,21 +3,17 @@ import { motion } from 'framer-motion';
 import { useUser } from '@/context/UserContext';
 import AvatarDisplay from '@/components/AvatarDisplay';
 import { TrendingUp, TrendingDown, Minus, Shield, Sparkles, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-
-const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const weekMoods: ('high' | 'mid' | 'low')[] = ['high', 'high', 'mid', 'high', 'low', 'mid', 'high'];
-const weekScores = [82, 75, 60, 78, 45, 65, 72];
 
 const WeeklySummary = () => {
-  const { avatarState, dailyScore, streak, completedChallenges, points, level } = useUser();
-  const navigate = useNavigate();
+  const { avatarState, dailyScore, streak, completedChallenges, points, level, weeklyData, diabetesRisk } = useUser();
 
-  const avgScore = Math.round(weekScores.reduce((a, b) => a + b, 0) / weekScores.length);
+  // Use real weekly data or fallback
+  const days = weeklyData.length > 0 ? weeklyData : [
+    { day: 'Today', score: dailyScore, mood: avatarState, logged: true },
+  ];
+
+  const avgScore = days.length > 0 ? Math.round(days.reduce((a, d) => a + d.score, 0) / days.length) : dailyScore;
   const trend = avgScore >= 70 ? 'up' : avgScore >= 50 ? 'stable' : 'down';
-  const riskLevel = avgScore >= 70 ? 'Low' : avgScore >= 50 ? 'Medium' : 'High';
-  const riskColor = avgScore >= 70 ? 'text-success' : avgScore >= 50 ? 'text-warning' : 'text-destructive';
-  const riskBg = avgScore >= 70 ? 'bg-success/10' : avgScore >= 50 ? 'bg-warning/10' : 'bg-destructive/10';
 
   return (
     <div className="min-h-screen bg-background pb-24 px-4 pt-6">
@@ -30,50 +26,52 @@ const WeeklySummary = () => {
         {/* Week mood bar */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="rounded-3xl bg-card p-5 shadow-card">
           <h2 className="font-bold text-foreground mb-4">Avatar Mood This Week</h2>
-          <div className="flex justify-between items-end gap-1">
-            {weekDays.map((day, i) => (
-              <div key={day} className="flex flex-col items-center gap-2">
-                <AvatarDisplay state={weekMoods[i]} size="sm" showLabel={false} />
-                <div className="h-16 w-8 rounded-lg bg-muted overflow-hidden flex items-end">
-                  <motion.div
-                    className={`w-full rounded-lg ${weekScores[i] >= 70 ? 'gradient-success' : weekScores[i] >= 50 ? 'gradient-accent' : 'gradient-danger'}`}
-                    initial={{ height: 0 }}
-                    animate={{ height: `${(weekScores[i] / 100) * 100}%` }}
-                    transition={{ delay: 0.2 + i * 0.05, duration: 0.5 }}
-                  />
-                </div>
-                <span className="text-xs font-semibold text-muted-foreground">{day}</span>
+          {days.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Log your habits daily to see trends here!</p>
+          ) : (
+            <>
+              <div className="flex justify-between items-end gap-1">
+                {days.map((d, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2">
+                    <AvatarDisplay state={d.mood} size="sm" showLabel={false} />
+                    <div className="h-16 w-8 rounded-lg bg-muted overflow-hidden flex items-end">
+                      <motion.div
+                        className={`w-full rounded-lg ${d.score >= 70 ? 'gradient-success' : d.score >= 50 ? 'gradient-accent' : 'gradient-danger'}`}
+                        initial={{ height: 0 }}
+                        animate={{ height: `${(d.score / 100) * 100}%` }}
+                        transition={{ delay: 0.2 + i * 0.05, duration: 0.5 }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-muted-foreground">{d.day}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
-            <span className="text-sm text-muted-foreground">Avg Score</span>
-            <div className="flex items-center gap-2">
-              {trend === 'up' && <TrendingUp className="h-4 w-4 text-success" />}
-              {trend === 'stable' && <Minus className="h-4 w-4 text-warning" />}
-              {trend === 'down' && <TrendingDown className="h-4 w-4 text-destructive" />}
-              <span className="text-lg font-bold text-foreground">{avgScore}/100</span>
-            </div>
-          </div>
+              <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
+                <span className="text-sm text-muted-foreground">Avg Score</span>
+                <div className="flex items-center gap-2">
+                  {trend === 'up' && <TrendingUp className="h-4 w-4 text-success" />}
+                  {trend === 'stable' && <Minus className="h-4 w-4 text-warning" />}
+                  {trend === 'down' && <TrendingDown className="h-4 w-4 text-destructive" />}
+                  <span className="text-lg font-bold text-foreground">{avgScore}/100</span>
+                </div>
+              </div>
+            </>
+          )}
         </motion.div>
 
-        {/* Challenge completion */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-3xl bg-card p-5 shadow-card">
-          <h2 className="font-bold text-foreground mb-3">🎯 Challenges This Week</h2>
-          <div className="flex items-center gap-4">
-            <div className="relative h-20 w-20">
-              <svg className="h-20 w-20 -rotate-90" viewBox="0 0 36 36">
-                <path className="text-muted" strokeDasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
-                <path className="text-primary" strokeDasharray={`${(completedChallenges.length / 8) * 100}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-bold text-foreground">{completedChallenges.length}/8</span>
-              </div>
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">{completedChallenges.length} challenges done!</p>
-              <p className="text-sm text-muted-foreground">Keep going, you're doing great 💪</p>
-            </div>
+        {/* Stats */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="grid grid-cols-3 gap-3">
+          <div className="rounded-2xl bg-card p-4 shadow-card text-center">
+            <p className="text-2xl font-bold text-foreground">{streak}</p>
+            <p className="text-xs text-muted-foreground">Day Streak 🔥</p>
+          </div>
+          <div className="rounded-2xl bg-card p-4 shadow-card text-center">
+            <p className="text-2xl font-bold text-foreground">{completedChallenges.length}</p>
+            <p className="text-xs text-muted-foreground">Challenges ✅</p>
+          </div>
+          <div className="rounded-2xl bg-card p-4 shadow-card text-center">
+            <p className="text-2xl font-bold text-foreground">{points}</p>
+            <p className="text-xs text-muted-foreground">Points ⭐</p>
           </div>
         </motion.div>
 
@@ -83,20 +81,20 @@ const WeeklySummary = () => {
             <Shield className="h-5 w-5 text-primary" />
             <h2 className="font-bold text-foreground">Risk Awareness</h2>
           </div>
-          <div className={`rounded-2xl ${riskBg} p-4 mb-3`}>
+          <div className={`rounded-2xl ${diabetesRisk.level === 'low' ? 'bg-success/10' : diabetesRisk.level === 'medium' ? 'bg-warning/10' : 'bg-destructive/10'} p-4`}>
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-foreground">Risk Level</span>
-              <span className={`text-lg font-bold ${riskColor}`}>{riskLevel}</span>
+              <span className={`text-lg font-bold ${diabetesRisk.level === 'low' ? 'text-success' : diabetesRisk.level === 'medium' ? 'text-warning' : 'text-destructive'}`}>
+                {diabetesRisk.level.charAt(0).toUpperCase() + diabetesRisk.level.slice(1)}
+              </span>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              {riskLevel === 'Low' && "Your recent habits look amazing! Keep up the awesome work 💚"}
-              {riskLevel === 'Medium' && "Your habits have some room for improvement. Small changes make a big difference! 💛"}
-              {riskLevel === 'High' && "Your recent habits show increased risk. Let's fix it early 💙"}
+              {diabetesRisk.level === 'low' && "Your recent habits look amazing! Keep up the awesome work 💚"}
+              {diabetesRisk.level === 'medium' && "Your habits have some room for improvement. Small changes make a big difference! 💛"}
+              {diabetesRisk.level === 'high' && "Your recent habits show increased risk. Let's fix it early 💙"}
             </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            ⚠️ This is based on trends, not a medical diagnosis
-          </p>
+          <p className="text-xs text-muted-foreground mt-2">⚠️ Based on trends, not a medical diagnosis</p>
         </motion.div>
 
         {/* Future You */}
