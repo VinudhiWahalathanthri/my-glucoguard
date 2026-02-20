@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export interface UserProfile {
   age: number;
@@ -29,6 +29,10 @@ interface UserContextType {
   setHabits: (h: Partial<DailyHabits>) => void;
   foodLog: FoodEntry[];
   addFoodEntry: (entry: FoodEntry) => void;
+  diabetesRisk: DiabetesRisk;
+  weeklyData: WeeklyDay[];
+  habitsLoggedToday: boolean;
+  markHabitsLogged: () => void;
 }
 
 export interface DailyHabits {
@@ -44,9 +48,30 @@ export interface FoodEntry {
   name: string;
   calories: number;
   sugar: number;
+  fat?: number;
   level: 'safe' | 'moderate' | 'high';
   time: string;
   image?: string;
+  advice?: {
+    isGoodChoice: boolean;
+    explanation: string;
+    healthierSwap: string;
+    swapReason: string;
+    tip: string;
+  };
+}
+
+export interface DiabetesRisk {
+  level: 'low' | 'medium' | 'high';
+  score: number; // 0-100
+  factors: string[];
+}
+
+export interface WeeklyDay {
+  day: string;
+  score: number;
+  mood: 'high' | 'mid' | 'low';
+  logged: boolean;
 }
 
 const defaultProfile: UserProfile = {
@@ -67,29 +92,135 @@ const defaultHabits: DailyHabits = {
   energyMood: 3,
 };
 
+// ---- localStorage helpers ----
+function loadJSON<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch { return fallback; }
+}
+function saveJSON(key: string, value: unknown) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getToday(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function calculateDiabetesRisk(profile: UserProfile, habits: DailyHabits): DiabetesRisk {
+  let score = 0;
+  const factors: string[] = [];
+
+  // BMI factor
+  if (profile.height > 0 && profile.weight > 0) {
+    const bmi = profile.weight / Math.pow(profile.height / 100, 2);
+    if (bmi > 30) { score += 25; factors.push('High BMI'); }
+    else if (bmi > 25) { score += 15; factors.push('Elevated BMI'); }
+    else { score += 0; }
+  }
+
+  // Family history
+  if (profile.familyDiabetes) { score += 20; factors.push('Family history of diabetes'); }
+
+  // Daily sugar intake from onboarding
+  if (profile.dailySugar === 'very-high') { score += 20; factors.push('Very high sugar intake'); }
+  else if (profile.dailySugar === 'high') { score += 15; factors.push('High sugar intake'); }
+  else if (profile.dailySugar === 'moderate') { score += 8; }
+
+  // Current habits
+  if (habits.sugarItems >= 6) { score += 10; factors.push('High daily sugar items'); }
+  else if (habits.sugarItems >= 3) { score += 5; }
+
+  if (habits.sugaryDrinks >= 3) { score += 10; factors.push('Frequent sugary drinks'); }
+  else if (habits.sugaryDrinks >= 1) { score += 3; }
+
+  if (habits.activityMinutes < 10) { score += 10; factors.push('Low physical activity'); }
+  else if (habits.activityMinutes >= 30) { score -= 5; }
+
+  if (habits.sleepHours < 6) { score += 5; factors.push('Insufficient sleep'); }
+
+  score = Math.max(0, Math.min(100, score));
+
+  const level = score >= 50 ? 'high' : score >= 25 ? 'medium' : 'low';
+  return { level, score, factors };
+}
+
+function calculateDailyScore(habits: DailyHabits): number {
+  let score = 50; // baseline
+  // Lower sugar = better
+  score += Math.max(0, 15 - habits.sugarItems * 3);
+  score += Math.max(0, 10 - habits.sugaryDrinks * 4);
+  // More activity = better
+  score += Math.min(15, habits.activityMinutes / 2);
+  // Good sleep = better
+  if (habits.sleepHours >= 7 && habits.sleepHours <= 9) score += 10;
+  else if (habits.sleepHours >= 6) score += 5;
+  // Good mood = slight boost
+  score += habits.energyMood * 2;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const [profile, setProfileState] = useState<UserProfile>(defaultProfile);
-  const [points, setPoints] = useState(150);
-  const [streak, setStreak] = useState(5);
-  const [completedChallenges, setCompletedChallenges] = useState<string[]>(['c1', 'c2']);
-  const [badges, setBadges] = useState<string[]>(['first-log', 'streak-3']);
-  const [dailyScore, setDailyScore] = useState(72);
-  const [avatarState, setAvatarState] = useState<'high' | 'mid' | 'low'>('high');
-  const [habits, setHabitsState] = useState<DailyHabits>(defaultHabits);
-  const [foodLog, setFoodLog] = useState<FoodEntry[]>([
-    { id: '1', name: 'Grilled Chicken Salad', calories: 350, sugar: 5, level: 'safe', time: '12:30 PM' },
-    { id: '2', name: 'Apple Juice', calories: 120, sugar: 24, level: 'high', time: '10:00 AM' },
-    { id: '3', name: 'Banana', calories: 105, sugar: 14, level: 'moderate', time: '9:00 AM' },
-    { id: '4', name: 'Oatmeal', calories: 150, sugar: 6, level: 'safe', time: '8:00 AM' },
-  ]);
+  const [profile, setProfileState] = useState<UserProfile>(() => loadJSON('glucoguard_profile', defaultProfile));
+  const [points, setPoints] = useState(() => loadJSON('glucoguard_points', 0));
+  const [streak, setStreak] = useState(() => loadJSON('glucoguard_streak', 0));
+  const [lastActiveDate, setLastActiveDate] = useState(() => loadJSON<string | null>('glucoguard_lastActive', null));
+  const [completedChallenges, setCompletedChallenges] = useState<string[]>(() => loadJSON('glucoguard_challenges', []));
+  const [badges, setBadges] = useState<string[]>(() => loadJSON('glucoguard_badges', []));
+  const [dailyScore, setDailyScoreState] = useState(() => loadJSON('glucoguard_dailyScore', 50));
+  const [avatarState, setAvatarStateInternal] = useState<'high' | 'mid' | 'low'>(() => loadJSON('glucoguard_avatar', 'mid'));
+  const [habits, setHabitsState] = useState<DailyHabits>(() => loadJSON('glucoguard_habits', defaultHabits));
+  const [foodLog, setFoodLog] = useState<FoodEntry[]>(() => loadJSON('glucoguard_foodLog', []));
+  const [habitsLoggedToday, setHabitsLoggedToday] = useState(() => loadJSON('glucoguard_habitsLoggedDate', '') === getToday());
+  const [weeklyData, setWeeklyData] = useState<WeeklyDay[]>(() => loadJSON('glucoguard_weeklyData', []));
+
+  // Persist all state changes
+  useEffect(() => { saveJSON('glucoguard_profile', profile); }, [profile]);
+  useEffect(() => { saveJSON('glucoguard_points', points); }, [points]);
+  useEffect(() => { saveJSON('glucoguard_streak', streak); }, [streak]);
+  useEffect(() => { saveJSON('glucoguard_lastActive', lastActiveDate); }, [lastActiveDate]);
+  useEffect(() => { saveJSON('glucoguard_challenges', completedChallenges); }, [completedChallenges]);
+  useEffect(() => { saveJSON('glucoguard_badges', badges); }, [badges]);
+  useEffect(() => { saveJSON('glucoguard_dailyScore', dailyScore); }, [dailyScore]);
+  useEffect(() => { saveJSON('glucoguard_avatar', avatarState); }, [avatarState]);
+  useEffect(() => { saveJSON('glucoguard_habits', habits); }, [habits]);
+  useEffect(() => { saveJSON('glucoguard_foodLog', foodLog); }, [foodLog]);
+  useEffect(() => { saveJSON('glucoguard_weeklyData', weeklyData); }, [weeklyData]);
+
+  // Streak logic on mount
+  useEffect(() => {
+    const today = getToday();
+    if (lastActiveDate === null) {
+      // First time user
+      return;
+    }
+    const lastDate = new Date(lastActiveDate);
+    const todayDate = new Date(today);
+    const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 1) {
+      // Streak broken
+      setStreak(0);
+    }
+    // If same day, do nothing. If exactly 1 day, streak continues (incremented on habit log)
+  }, []);
+
+  // Update avatar state based on daily score
+  useEffect(() => {
+    if (dailyScore >= 70) setAvatarStateInternal('high');
+    else if (dailyScore >= 40) setAvatarStateInternal('mid');
+    else setAvatarStateInternal('low');
+  }, [dailyScore]);
+
+  const diabetesRisk = calculateDiabetesRisk(profile, habits);
 
   const setProfile = (partial: Partial<UserProfile>) => {
     setProfileState(prev => ({ ...prev, ...partial }));
   };
 
-  const addPoints = (p: number) => setPoints(prev => prev + p);
+  const addPoints = (p: number) => setPoints((prev: number) => prev + p);
   const level = Math.floor(points / 100) + 1;
 
   const completeChallenge = (id: string) => {
@@ -107,11 +238,70 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const setHabits = (partial: Partial<DailyHabits>) => {
-    setHabitsState(prev => ({ ...prev, ...partial }));
+    setHabitsState(prev => {
+      const next = { ...prev, ...partial };
+      // Recalculate daily score
+      const newScore = calculateDailyScore(next);
+      setDailyScoreState(newScore);
+      return next;
+    });
+  };
+
+  const setDailyScore = (s: number) => setDailyScoreState(s);
+  const setAvatarState = (s: 'high' | 'mid' | 'low') => setAvatarStateInternal(s);
+
+  const markHabitsLogged = () => {
+    const today = getToday();
+    if (!habitsLoggedToday) {
+      setHabitsLoggedToday(true);
+      saveJSON('glucoguard_habitsLoggedDate', today);
+      
+      // Update streak
+      if (lastActiveDate !== today) {
+        const lastDate = lastActiveDate ? new Date(lastActiveDate) : null;
+        const todayDate = new Date(today);
+        const diffDays = lastDate ? Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)) : -1;
+        
+        if (diffDays === 1 || diffDays === -1) {
+          setStreak(prev => prev + 1);
+        } else if (diffDays === 0) {
+          // Same day, don't increment
+        } else {
+          setStreak(1); // restart streak
+        }
+        setLastActiveDate(today);
+      }
+
+      // Add to weekly data
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayName = dayNames[new Date().getDay()];
+      const score = calculateDailyScore(habits);
+      const mood: 'high' | 'mid' | 'low' = score >= 70 ? 'high' : score >= 40 ? 'mid' : 'low';
+      setWeeklyData(prev => {
+        const updated = [...prev, { day: dayName, score, mood, logged: true }];
+        // Keep only last 7 entries
+        return updated.slice(-7);
+      });
+
+      addPoints(10); // Points for logging
+
+      // Check badge conditions
+      if (streak >= 2) earnBadge('streak-3');
+      if (streak >= 6) earnBadge('streak-7');
+      if (habits.sugarItems === 0 && habits.sugaryDrinks === 0) earnBadge('sugar-free');
+    }
   };
 
   const addFoodEntry = (entry: FoodEntry) => {
-    setFoodLog(prev => [entry, ...prev]);
+    setFoodLog(prev => {
+      const updated = [entry, ...prev];
+      // Check scan-pro badge
+      if (updated.length >= 10) earnBadge('scan-pro');
+      return updated;
+    });
+    addPoints(5);
+    // First log badge
+    earnBadge('first-log');
   };
 
   return (
@@ -119,7 +309,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       profile, setProfile, points, addPoints, level, streak,
       completedChallenges, completeChallenge, badges, earnBadge,
       dailyScore, setDailyScore, avatarState, setAvatarState,
-      habits, setHabits, foodLog, addFoodEntry,
+      habits, setHabits, foodLog, addFoodEntry, diabetesRisk,
+      weeklyData, habitsLoggedToday, markHabitsLogged,
     }}>
       {children}
     </UserContext.Provider>

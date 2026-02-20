@@ -1,17 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '@/context/UserContext';
-import { Trophy, Star, Lock, Check, Flame, Medal, Sparkles, Heart, Droplets, Candy } from 'lucide-react';
+import { Star, Lock, Check } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const challenges = [
-  { id: 'c1', title: 'Max 3 junk foods this week', emoji: '🍔', points: 30, category: 'food' },
-  { id: 'c2', title: 'Drink water instead of soda – 5 days', emoji: '💧', points: 25, category: 'sugar' },
-  { id: 'c3', title: '10 mins movement daily', emoji: '🏃', points: 20, category: 'exercise' },
-  { id: 'c4', title: 'Zero sugary drinks today', emoji: '🥤', points: 15, category: 'sugar' },
-  { id: 'c5', title: 'Eat 2 fruits today', emoji: '🍎', points: 15, category: 'food' },
-  { id: 'c6', title: 'Sleep 8+ hours tonight', emoji: '🛌', points: 20, category: 'wellness' },
-  { id: 'c7', title: 'No candy for 3 days', emoji: '🍬', points: 35, category: 'sugar' },
-  { id: 'c8', title: 'Walk 5000 steps today', emoji: '👟', points: 25, category: 'exercise' },
+  { id: 'c1', title: 'Max 3 junk foods this week', emoji: '🍔', points: 30, category: 'food', check: (h: any) => h.sugarItems <= 3 },
+  { id: 'c2', title: 'Drink water instead of soda – 5 days', emoji: '💧', points: 25, category: 'sugar', check: (h: any) => h.sugaryDrinks === 0 },
+  { id: 'c3', title: '10 mins movement daily', emoji: '🏃', points: 20, category: 'exercise', check: (h: any) => h.activityMinutes >= 10 },
+  { id: 'c4', title: 'Zero sugary drinks today', emoji: '🥤', points: 15, category: 'sugar', check: (h: any) => h.sugaryDrinks === 0 },
+  { id: 'c5', title: 'Eat 2 fruits today', emoji: '🍎', points: 15, category: 'food', check: () => false },
+  { id: 'c6', title: 'Sleep 8+ hours tonight', emoji: '🛌', points: 20, category: 'wellness', check: (h: any) => h.sleepHours >= 8 },
+  { id: 'c7', title: 'No candy for 3 days', emoji: '🍬', points: 35, category: 'sugar', check: (h: any) => h.sugarItems === 0 },
+  { id: 'c8', title: 'Walk 5000 steps today', emoji: '👟', points: 25, category: 'exercise', check: (h: any) => h.activityMinutes >= 30 },
+  { id: 'c9', title: 'Max 2 sugar items today', emoji: '🍭', points: 20, category: 'sugar', check: (h: any) => h.sugarItems <= 2 },
+  { id: 'c10', title: 'Get 7+ hours of sleep', emoji: '😴', points: 15, category: 'wellness', check: (h: any) => h.sleepHours >= 7 },
 ];
 
 const allBadges = [
@@ -26,8 +29,20 @@ const allBadges = [
 ];
 
 const Challenges = () => {
-  const { completedChallenges, completeChallenge, badges, earnBadge, points, level } = useUser();
+  const { completedChallenges, completeChallenge, badges, points, level, habits } = useUser();
   const [tab, setTab] = useState<'challenges' | 'badges'>('challenges');
+
+  // Auto-check challenges against current habits
+  const canComplete = (c: typeof challenges[0]) => {
+    return c.check(habits) && !completedChallenges.includes(c.id);
+  };
+
+  const handleComplete = (c: typeof challenges[0]) => {
+    if (!completedChallenges.includes(c.id)) {
+      completeChallenge(c.id);
+      toast({ title: "Challenge done! 🎉", description: `+${c.points} points earned!` });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24 px-4 pt-6">
@@ -50,10 +65,7 @@ const Challenges = () => {
             <span className="font-bold text-lg">Level {level}</span>
           </div>
           <div className="h-3 w-full rounded-full bg-primary-foreground/20 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-primary-foreground/80 transition-all"
-              style={{ width: `${(points % 100)}%` }}
-            />
+            <div className="h-full rounded-full bg-primary-foreground/80 transition-all" style={{ width: `${(points % 100)}%` }} />
           </div>
           <p className="text-sm mt-2 opacity-80">{100 - (points % 100)} pts to level {level + 1}</p>
         </motion.div>
@@ -80,15 +92,10 @@ const Challenges = () => {
 
         <AnimatePresence mode="wait">
           {tab === 'challenges' ? (
-            <motion.div
-              key="challenges"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="space-y-3"
-            >
+            <motion.div key="challenges" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-3">
               {challenges.map((c, i) => {
                 const done = completedChallenges.includes(c.id);
+                const eligible = canComplete(c);
                 return (
                   <motion.div
                     key={c.id}
@@ -96,13 +103,16 @@ const Challenges = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                     className={`flex items-center gap-4 rounded-2xl p-4 shadow-card transition-all ${
-                      done ? 'bg-success/10 border border-success/30' : 'bg-card'
+                      done ? 'bg-success/10 border border-success/30' : eligible ? 'bg-primary/5 border border-primary/30' : 'bg-card'
                     }`}
                   >
                     <span className="text-3xl">{c.emoji}</span>
                     <div className="flex-1">
                       <p className={`font-semibold ${done ? 'text-success line-through' : 'text-foreground'}`}>{c.title}</p>
                       <p className="text-xs text-muted-foreground">+{c.points} points</p>
+                      {eligible && !done && (
+                        <p className="text-xs text-primary font-semibold mt-1">✨ Your habits qualify!</p>
+                      )}
                     </div>
                     {done ? (
                       <div className="rounded-full bg-success p-1.5">
@@ -110,27 +120,26 @@ const Challenges = () => {
                       </div>
                     ) : (
                       <button
-                        onClick={() => completeChallenge(c.id)}
-                        className="rounded-xl gradient-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-button"
+                        onClick={() => handleComplete(c)}
+                        disabled={!eligible}
+                        className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                          eligible
+                            ? 'gradient-primary text-primary-foreground shadow-button active:scale-95'
+                            : 'bg-muted text-muted-foreground cursor-not-allowed'
+                        }`}
                       >
-                        Done!
+                        {eligible ? 'Claim!' : 'In Progress'}
                       </button>
                     )}
                   </motion.div>
                 );
               })}
               <p className="text-center text-xs text-muted-foreground pt-2">
-                Challenges reset weekly • Miss = feedback, not failure 💙
+                Log your habits first to unlock challenges! 💙
               </p>
             </motion.div>
           ) : (
-            <motion.div
-              key="badges"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="grid grid-cols-2 gap-3"
-            >
+            <motion.div key="badges" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="grid grid-cols-2 gap-3">
               {allBadges.map((b, i) => {
                 const earned = badges.includes(b.id);
                 return (

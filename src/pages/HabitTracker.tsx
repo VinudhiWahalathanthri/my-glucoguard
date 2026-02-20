@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useUser } from '@/context/UserContext';
-import { Candy, GlassWater, Footprints, Moon, Smile } from 'lucide-react';
+import { Candy, GlassWater, Footprints, Moon, Smile, Check } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const habitItems = [
   { key: 'sugarItems' as const, icon: Candy, label: 'Sugar Items', emoji: '🍬', max: 10, unit: 'items', color: 'text-destructive' },
@@ -14,7 +15,15 @@ const habitItems = [
 const moodEmojis = ['😫', '😟', '😐', '🙂', '😄', '🤩'];
 
 const HabitTracker = () => {
-  const { habits, setHabits } = useUser();
+  const { habits, setHabits, habitsLoggedToday, markHabitsLogged, streak } = useUser();
+
+  const handleSaveHabits = () => {
+    markHabitsLogged();
+    toast({
+      title: "Habits logged! 🎉",
+      description: `+10 points • ${streak + 1} day streak`,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24 px-4 pt-6">
@@ -78,7 +87,6 @@ const HabitTracker = () => {
                     <span className="text-xs text-muted-foreground">{item.max} {item.unit}</span>
                   </div>
 
-                  {/* Quick tap buttons */}
                   {item.max <= 10 && (
                     <div className="flex gap-1.5 mt-3 flex-wrap">
                       {Array.from({ length: item.max + 1 }, (_, idx) => (
@@ -101,6 +109,27 @@ const HabitTracker = () => {
             </motion.div>
           );
         })}
+
+        {/* Save Button */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+          <button
+            onClick={handleSaveHabits}
+            disabled={habitsLoggedToday}
+            className={`w-full rounded-2xl py-4 font-bold text-lg shadow-button transition-all active:scale-95 ${
+              habitsLoggedToday
+                ? 'bg-success/20 text-success cursor-default'
+                : 'gradient-primary text-primary-foreground'
+            }`}
+          >
+            {habitsLoggedToday ? (
+              <span className="flex items-center justify-center gap-2">
+                <Check className="h-5 w-5" /> Logged Today ✅
+              </span>
+            ) : (
+              'Save Today\'s Habits 💾'
+            )}
+          </button>
+        </motion.div>
       </div>
     </div>
   );
