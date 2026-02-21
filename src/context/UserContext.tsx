@@ -287,7 +287,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Update avatar state based on daily score
+  // Updating avatar state based on daily score
   useEffect(() => {
     if (dailyScore >= 70) setAvatarStateInternal("high");
     else if (dailyScore >= 40) setAvatarStateInternal("mid");
@@ -417,9 +417,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         if (diffDays === 1 || diffDays === -1) {
           setStreak((prev) => prev + 1);
         } else if (diffDays === 0) {
-          // Same day, don't increment
+         
         } else {
-          setStreak(1); // restart streak
+          setStreak(1);k
         }
         setLastActiveDate(today);
       }
@@ -432,13 +432,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         score >= 70 ? "high" : score >= 40 ? "mid" : "low";
       setWeeklyData((prev) => {
         const updated = [...prev, { day: dayName, score, mood, logged: true }];
-        // Keep only last 7 entries
+      
         return updated.slice(-7);
       });
 
-      addPoints(10); // Points for logging
+      addPoints(10); 
 
-      // Check badge conditions
       if (streak >= 2) earnBadge("streak-3");
       if (streak >= 6) earnBadge("streak-7");
       if (habits.sugarItems === 0 && habits.sugaryDrinks === 0)
@@ -449,12 +448,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const addFoodEntry = (entry: FoodEntry) => {
     setFoodLog((prev) => {
       const updated = [entry, ...prev];
-      // Check scan-pro badge
       if (updated.length >= 10) earnBadge("scan-pro");
       return updated;
     });
     addPoints(5);
-    // First log badge
     earnBadge("first-log");
   };
 

@@ -16,11 +16,7 @@ const steps = [
     subtitle: "Safety first! How old are you?",
     field: "age_gate",
   },
-  {
-    title: "How old are you?",
-    subtitle: "This helps us personalize your experience",
-    field: "age",
-  },
+  { title: "How old are you?", subtitle: "Between 10 and 25", field: "age" },
   {
     title: "What's your gender?",
     subtitle: "Select what applies to you",
@@ -29,13 +25,28 @@ const steps = [
   { title: "What's your height?", subtitle: "In centimeters", field: "height" },
   { title: "What's your weight?", subtitle: "In kilograms", field: "weight" },
   {
-    title: "Family history of diabetes?",
-    subtitle: "This is private & helps assess your risk",
+    title: "Family history?",
+    subtitle: "Does diabetes run in your family?",
     field: "familyDiabetes",
   },
   {
-    title: "Daily sugar intake?",
-    subtitle: "How much sugar do you consume daily?",
+    title: "Tea & Sugar ☕",
+    subtitle: "How many cups of tea with sugar daily?",
+    field: "teaLog",
+  },
+  {
+    title: "Sleep 😴",
+    subtitle: "How many hours did you sleep last night?",
+    field: "sleep",
+  },
+  {
+    title: "Activity 🏃",
+    subtitle: "Minutes of physical activity today?",
+    field: "activity",
+  },
+  {
+    title: "Sugar Habits 🍬",
+    subtitle: "Overall typical daily sugar intake",
     field: "dailySugar",
   },
   {
@@ -48,6 +59,7 @@ const steps = [
 const Onboarding = () => {
   const [step, setStep] = useState(0);
   const { profile, setProfile } = useUser();
+  const { habits, setHabits } = useUser();
   const navigate = useNavigate();
   const [localAge, setLocalAge] = useState("");
   const [localHeight, setLocalHeight] = useState("");
@@ -282,6 +294,82 @@ const Onboarding = () => {
                   >
                     {desc}
                   </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "teaLog":
+        return (
+          <div className="flex flex-col items-center gap-4">
+            <div className="text-6xl">☕</div>
+            <div className="flex items-center gap-4">
+              {[0, 1, 2, 3, "4+"].map((num) => (
+                <button
+                  key={num}
+                  onClick={() =>
+                    setHabits({
+                      sugaryDrinks: typeof num === "string" ? 4 : num,
+                    })
+                  }
+                  className={`w-14 h-14 rounded-2xl font-bold transition-all ${
+                    habits.sugaryDrinks === (typeof num === "string" ? 4 : num)
+                      ? "gradient-primary text-primary-foreground scale-110"
+                      : "bg-card shadow-card"
+                  }`}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground">Cups per day</p>
+          </div>
+        );
+
+      case "sleep":
+        return (
+          <div className="flex flex-col items-center gap-4">
+            <div className="text-6xl">🌙</div>
+            <input
+              type="range"
+              min="4"
+              max="12"
+              step="0.5"
+              value={habits.sleepHours}
+              onChange={(e) =>
+                setHabits({ sleepHours: Number(e.target.value) })
+              }
+              className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+            />
+            <span className="text-2xl font-bold text-foreground">
+              {habits.sleepHours} Hours
+            </span>
+            <p className="text-sm text-muted-foreground">Ideal is 7-9 hours</p>
+          </div>
+        );
+
+      case "activity":
+        return (
+          <div className="flex flex-col items-center gap-4 w-full">
+            <div className="text-6xl">🏃</div>
+            <div className="grid grid-cols-2 gap-3 w-full">
+              {[
+                { label: "None", val: 0 },
+                { label: "Light (15m)", val: 15 },
+                { label: "Active (30m)", val: 30 },
+                { label: "Pro (60m+)", val: 60 },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => setHabits({ activityMinutes: item.val })}
+                  className={`p-4 rounded-2xl font-bold transition-all ${
+                    habits.activityMinutes === item.val
+                      ? "gradient-primary text-primary-foreground"
+                      : "bg-card shadow-card"
+                  }`}
+                >
+                  {item.label}
                 </button>
               ))}
             </div>
