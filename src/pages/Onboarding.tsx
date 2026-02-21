@@ -45,9 +45,19 @@ const steps = [
     field: "activity",
   },
   {
-    title: "Sugar Habits 🍬",
-    subtitle: "Overall typical daily sugar intake",
-    field: "dailySugar",
+    title: "Meal Habits 🍽️",
+    subtitle: "What does your typical day look like?",
+    field: "meals",
+  },
+  {
+    title: "School Commute 🚲",
+    subtitle: "How do you get to school?",
+    field: "commute",
+  },
+  {
+    title: "Sports & Fitness ⚽",
+    subtitle: "Daily exercise and school sports",
+    field: "fitness",
   },
   {
     title: "You're all set! 🚀",
@@ -65,6 +75,15 @@ const Onboarding = () => {
   const [localHeight, setLocalHeight] = useState("");
   const [localWeight, setLocalWeight] = useState("");
   const [isBlocked, setIsBlocked] = useState(false);
+
+  const [meals, setMeals] = useState({ breakfast: "", lunch: "", dinner: "" });
+  const [commute, setCommute] = useState("");
+  const [fitness, setFitness] = useState({
+    playsSports: false,
+    hoursPerDay: 1,
+    daysPerWeek: 3,
+    homeExerciseMins: 0,
+  });
 
   const currentStep = steps[step];
   const progress = (step / (steps.length - 1)) * 100;
@@ -372,6 +391,215 @@ const Onboarding = () => {
                   {item.label}
                 </button>
               ))}
+            </div>
+          </div>
+        );
+
+      case "meals":
+        return (
+          <div className="flex flex-col gap-4 w-full max-w-sm">
+            {/* Breakfast */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold flex items-center gap-2">
+                🍳 Breakfast
+              </label>
+              <select
+                onChange={(e) =>
+                  setMeals({ ...meals, breakfast: e.target.value })
+                }
+                className="w-full p-3 rounded-xl bg-card border-2 border-primary/10 outline-none focus:border-primary"
+              >
+                <option value="">Select...</option>
+                <option value="heavy">
+                  Heavy (Rice, Bread, Eggs, Full meal)
+                </option>
+                <option value="light">Light (Cereal, Fruit, Toast)</option>
+                <option value="none">I skip breakfast</option>
+              </select>
+            </div>
+
+            {/* Lunch */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold flex items-center gap-2">
+                🍱 Lunch
+              </label>
+              <select
+                onChange={(e) => setMeals({ ...meals, lunch: e.target.value })}
+                className="w-full p-3 rounded-xl bg-card border-2 border-primary/10 outline-none focus:border-primary"
+              >
+                <option value="">Select...</option>
+                <option value="home">Home cooked (Rice & Curry/Pasta)</option>
+                <option value="fastfood">
+                  Fast Food / Canteen (Burgers, Fries)
+                </option>
+                <option value="salad">Salad or light sandwich</option>
+              </select>
+            </div>
+
+            {/* Dinner */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold flex items-center gap-2">
+                🌙 Dinner
+              </label>
+              <select
+                onChange={(e) => setMeals({ ...meals, dinner: e.target.value })}
+                className="w-full p-3 rounded-xl bg-card border-2 border-primary/10 outline-none focus:border-primary"
+              >
+                <option value="">Select...</option>
+                <option value="heavy">Full heavy meal (Rice, Meats)</option>
+                <option value="light">Light dinner (Soup, Salad, Tea)</option>
+                <option value="late">Late night heavy snacking</option>
+              </select>
+            </div>
+          </div>
+        );
+
+      case "commute":
+        return (
+          <div className="grid grid-cols-1 gap-3 w-full">
+            {[
+              {
+                id: "car",
+                label: "Car / Bus",
+                emoji: "🚗",
+                desc: "Mostly sitting",
+              },
+              {
+                id: "cycle",
+                label: "Bicycle",
+                emoji: "🚲",
+                desc: "Good workout",
+              },
+              {
+                id: "walk",
+                label: "Walking",
+                emoji: "🚶",
+                desc: "Highly active",
+              },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setCommute(item.id)}
+                className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${
+                  commute === item.id
+                    ? "gradient-primary text-primary-foreground scale-105"
+                    : "bg-card border-2 border-primary/5 shadow-sm"
+                }`}
+              >
+                <span className="text-3xl">{item.emoji}</span>
+                <div className="text-left">
+                  <p className="font-bold">{item.label}</p>
+                  <p
+                    className={`text-xs ${commute === item.id ? "opacity-80" : "text-muted-foreground"}`}
+                  >
+                    {item.desc}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        );
+      case "fitness":
+        return (
+          <div className="flex flex-col gap-6 w-full max-w-sm animate-in fade-in slide-in-from-bottom-4">
+            {/* Primary Question */}
+            <div className="bg-card p-5 rounded-3xl border-2 border-primary/5 shadow-sm">
+              <p className="font-bold text-center mb-4">
+                Do you play sports in school? ⚽
+              </p>
+              <div className="flex gap-4">
+                <Button
+                  className={`flex-1 h-12 rounded-2xl font-bold transition-all ${fitness.playsSports ? "gradient-primary text-white" : "bg-muted text-muted-foreground"}`}
+                  onClick={() => setFitness({ ...fitness, playsSports: true })}
+                >
+                  Yes
+                </Button>
+                <Button
+                  className={`flex-1 h-12 rounded-2xl font-bold transition-all ${!fitness.playsSports ? "gradient-primary text-white" : "bg-muted text-muted-foreground"}`}
+                  onClick={() => setFitness({ ...fitness, playsSports: false })}
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+
+            {/* Conditional Detailed Sports Questions */}
+            <AnimatePresence>
+              {fitness.playsSports && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="space-y-4 overflow-hidden"
+                >
+                  <div className="bg-accent/5 p-4 rounded-2xl border border-accent/20">
+                    <label className="text-sm font-bold flex justify-between">
+                      <span>Hours per session</span>
+                      <span className="text-accent">
+                        {fitness.hoursPerDay}h
+                      </span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="4"
+                      step="0.5"
+                      value={fitness.hoursPerDay}
+                      onChange={(e) =>
+                        setFitness({
+                          ...fitness,
+                          hoursPerDay: parseFloat(e.target.value),
+                        })
+                      }
+                      className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-accent"
+                    />
+                  </div>
+
+                  <div className="bg-accent/5 p-4 rounded-2xl border border-accent/20">
+                    <label className="text-sm font-bold flex justify-between">
+                      <span>Days per week</span>
+                      <span className="text-accent">
+                        {fitness.daysPerWeek} days
+                      </span>
+                    </label>
+                    <div className="flex justify-between mt-2">
+                      {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                        <button
+                          key={d}
+                          onClick={() =>
+                            setFitness({ ...fitness, daysPerWeek: d })
+                          }
+                          className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${fitness.daysPerWeek === d ? "bg-accent text-white" : "bg-muted"}`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Home Exercise Section */}
+            <div className="space-y-3 px-2">
+              <p className="font-bold text-sm text-muted-foreground uppercase tracking-wider">
+                Home Exercise / Gym
+              </p>
+              <div className="flex items-center gap-4">
+                <input
+                  type="number"
+                  value={fitness.homeExerciseMins}
+                  onChange={(e) =>
+                    setFitness({
+                      ...fitness,
+                      homeExerciseMins: Number(e.target.value),
+                    })
+                  }
+                  placeholder="Mins"
+                  className="w-24 p-3 rounded-xl border-2 border-primary/10 bg-card text-center font-bold"
+                />
+                <span className="text-sm font-medium">mins daily</span>
+              </div>
             </div>
           </div>
         );

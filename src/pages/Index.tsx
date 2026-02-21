@@ -130,7 +130,7 @@ const Index = () => {
           <div className={`rounded-2xl ${riskBg} p-4`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold text-foreground">
-                Risk Level
+                Sugar Level for the day
               </span>
               <span className={`text-lg font-bold ${riskColor}`}>
                 {riskEmoji}{" "}
